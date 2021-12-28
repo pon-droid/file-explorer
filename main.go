@@ -118,12 +118,36 @@ func update_list(list *widgets.List, current_dir string) {
 	list.Title = current_dir
 	files, _ := ioutil.ReadDir(current_dir)
 	list.Rows = dirs_to_list(files)
+	list.ScrollTop()
 
 }
 
+func is_dir(current_dir []string, list *widgets.List) (bool, []string) {
+	new_dir := slice_2_string(current_dir) + list.Rows[list.SelectedRow] + "/"
+	_, err := ioutil.ReadDir(new_dir)
+	if err != nil {
+		return false, []string{"fail"}
+	}
+	current_dir = append(current_dir, (list.Rows[list.SelectedRow] + "/"))
+	return true, current_dir
+}
+
+func go_back(current_dir []string) []string {
+	new := current_dir[0 : len(current_dir)-1]
+	return new
+}
+
+func slice_2_string(slice []string) string {
+	var temp_string string
+	for i := range slice {
+		temp_string += slice[i]
+	}
+	return temp_string
+}
+
 func main() {
-	current_dir := "/home/tgallaher/"
-	files, _ := ioutil.ReadDir(current_dir)
+	current_dir := []string{"/", "home/", "tgallaher/"}
+	files, _ := ioutil.ReadDir(slice_2_string(current_dir))
 
 	if err := ui.Init(); err != nil {
 		log.Fatal("Could not init UI!")
@@ -132,7 +156,7 @@ func main() {
 
 	list := widgets.NewList()
 
-	list.Title = current_dir
+	list.Title = slice_2_string(current_dir)
 
 	list.Rows = dirs_to_list(files)
 
@@ -142,7 +166,7 @@ func main() {
 
 	ui.Render(list)
 	for e := range ui.PollEvents() {
-		update_list(list, current_dir)
+
 		switch e.ID {
 		case "w":
 			list.ScrollUp()
@@ -153,8 +177,20 @@ func main() {
 			list.Title = fmt.Sprint(list.SelectedRow)
 		case "f":
 			return
-		case "e":
-			current_dir = current_dir + list.Rows[list.SelectedRow] + "/"
+		case "d":
+			dir, temp_dir := is_dir(current_dir, list)
+			if dir {
+
+				current_dir = temp_dir
+				update_list(list, slice_2_string(current_dir))
+			}
+
+		case "a":
+			if len(current_dir)-1 != 0 {
+				current_dir = go_back(current_dir)
+				update_list(list, slice_2_string(current_dir))
+			}
+
 		}
 
 		ui.Render(list)
