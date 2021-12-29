@@ -2,7 +2,10 @@ module pon-droid/file-exp
 
 go 1.17
 
-require github.com/gizak/termui/v3 v3.1.0
+require (
+	github.com/agnivade/levenshtein v1.1.1
+	github.com/gizak/termui/v3 v3.1.0
+)
 
 require (
 	github.com/mattn/go-runewidth v0.0.2 // indirect

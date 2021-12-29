@@ -5,7 +5,9 @@ import (
 	"io/fs"
 	"io/ioutil"
 	"log"
+	"sort"
 
+	"github.com/agnivade/levenshtein"
 	ui "github.com/gizak/termui/v3"
 	"github.com/gizak/termui/v3/widgets"
 )
@@ -190,10 +192,75 @@ func main() {
 				current_dir = go_back(current_dir)
 				update_list(list, slice_2_string(current_dir))
 			}
-
+		case "<Enter>":
+			write_text(list, current_dir)
 		}
 
 		ui.Render(list)
 
 	}
+}
+
+func write_text(list *widgets.List, current_dir []string) {
+	list.Title = ""
+	for {
+		events := ui.PollEvents()
+		e := <-events
+		if e.Type == ui.KeyboardEvent {
+			switch e.ID {
+			case "<Escape>":
+				list.Title = slice_2_string(current_dir)
+				return
+			case "<Backspace>":
+				if len(list.Title) > 0 {
+					list.Title = list.Title[:(len(list.Title) - 1)]
+					ui.Render(list)
+				}
+			case "<Enter>":
+				dir, temp_dir := is_dir(current_dir, list)
+				if dir {
+
+					current_dir = temp_dir
+					update_list(list, slice_2_string(current_dir))
+				}
+				return
+			default:
+				list.Title = list.Title + e.ID
+
+			}
+			files, _ := ioutil.ReadDir(slice_2_string(current_dir))
+			list.Rows = filter(list.Title, files)
+			list.ScrollTop()
+			ui.Render(list)
+
+		}
+	}
+
+}
+
+type fuzzy_search struct {
+	name string
+	dist int
+}
+
+type fuzz_list []fuzzy_search
+
+func (f fuzz_list) Len() int { return len(f) }
+
+func (f fuzz_list) Less(i, j int) bool { return f[i].dist < f[j].dist }
+
+func (f fuzz_list) Swap(i, j int) { f[i], f[j] = f[j], f[i] }
+
+func filter(input string, files []fs.FileInfo) []string {
+	var new_list fuzz_list
+	for i := range files {
+		dist := levenshtein.ComputeDistance(input, files[i].Name())
+		new_list = append(new_list, fuzzy_search{files[i].Name(), dist})
+	}
+	sort.Sort(new_list)
+	var new_new_list []string
+	for i := range new_list {
+		new_new_list = append(new_new_list, new_list[i].name)
+	}
+	return new_new_list
 }
