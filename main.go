@@ -99,9 +99,9 @@ func termui_test() {
 }
 
 func dirs_to_list(files []fs.FileInfo) []string {
-	list := []string{}
+	list := make([]string, len(files))
 	for i := range files {
-		list = append(list, files[i].Name())
+		list[i] = files[i].Name()
 	}
 	return list
 }
@@ -252,15 +252,16 @@ func (f fuzz_list) Less(i, j int) bool { return f[i].dist < f[j].dist }
 func (f fuzz_list) Swap(i, j int) { f[i], f[j] = f[j], f[i] }
 
 func filter(input string, files []fs.FileInfo) []string {
-	var new_list fuzz_list
+	new_list := make(fuzz_list, len(files))
 	for i := range files {
 		dist := levenshtein.ComputeDistance(input, files[i].Name())
-		new_list = append(new_list, fuzzy_search{files[i].Name(), dist})
+		new_list[i].name = files[i].Name()
+		new_list[i].dist = dist
 	}
 	sort.Sort(new_list)
-	var new_new_list []string
+	string_slice := make([]string, len(new_list))
 	for i := range new_list {
-		new_new_list = append(new_new_list, new_list[i].name)
+		string_slice[i] = new_list[i].name
 	}
-	return new_new_list
+	return string_slice
 }
