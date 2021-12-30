@@ -2,9 +2,14 @@ package main
 
 import (
 	"fmt"
+	"image"
+	_ "image/gif"
+	_ "image/jpeg"
+	_ "image/png"
 	"io/fs"
 	"io/ioutil"
 	"log"
+	"os"
 	"sort"
 
 	"github.com/agnivade/levenshtein"
@@ -128,7 +133,7 @@ func is_dir(current_dir []string, list *widgets.List) (bool, []string) {
 	new_dir := slice_2_string(current_dir) + list.Rows[list.SelectedRow] + "/"
 	_, err := ioutil.ReadDir(new_dir)
 	if err != nil {
-		return false, []string{"fail"}
+		return false, []string{"no"}
 	}
 	current_dir = append(current_dir, (list.Rows[list.SelectedRow] + "/"))
 	return true, current_dir
@@ -145,6 +150,19 @@ func slice_2_string(slice []string) string {
 		temp_string += slice[i]
 	}
 	return temp_string
+}
+
+func display_image(current_dir []string, display *widgets.Image, list *widgets.List) {
+	new_dir := slice_2_string(current_dir) + list.Rows[list.SelectedRow]
+	file, err := os.Open(new_dir)
+	if err != nil {
+		return
+	}
+
+	image, _, _ := image.Decode(file)
+	display.Image = image
+	defer file.Close()
+
 }
 
 func main() {
@@ -164,7 +182,14 @@ func main() {
 
 	list.TextStyle = ui.NewStyle(ui.ColorGreen)
 	list.WrapText = false
-	list.SetRect(0, 0, 50, 25)
+	list.SetRect(0, 0, 50, 50)
+
+	//Make image
+
+	display := widgets.NewImage(nil)
+
+	display.SetRect(50, 0, 200, 50)
+	display.BorderStyle = ui.NewStyle(ui.ColorBlue)
 
 	ui.Render(list)
 	for e := range ui.PollEvents() {
@@ -172,14 +197,17 @@ func main() {
 		switch e.ID {
 		case "w":
 			list.ScrollUp()
+
 		case "s":
 			list.ScrollDown()
+
 		case "<Home>":
 			list.Title = "hello"
 			list.Title = fmt.Sprint(list.SelectedRow)
 		case "f":
 			return
 		case "d", "<Enter>":
+			display.Image = nil
 			dir, temp_dir := is_dir(current_dir, list)
 			if dir {
 
@@ -188,16 +216,22 @@ func main() {
 			}
 
 		case "a":
+			display.Image = nil
+			//Massive lagspike when navigating with image in buffer
 			if len(current_dir)-1 != 0 {
 				current_dir = go_back(current_dir)
 				update_list(list, slice_2_string(current_dir))
 			}
 		case "t":
 			write_text(list, &current_dir)
+		case "e":
+
+			display_image(current_dir, display, list)
+
 		}
 
 		ui.Render(list)
-
+		ui.Render(display)
 	}
 }
 
