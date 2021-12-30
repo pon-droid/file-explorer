@@ -179,7 +179,7 @@ func main() {
 			list.Title = fmt.Sprint(list.SelectedRow)
 		case "f":
 			return
-		case "d":
+		case "d", "<Enter>":
 			dir, temp_dir := is_dir(current_dir, list)
 			if dir {
 
@@ -192,8 +192,8 @@ func main() {
 				current_dir = go_back(current_dir)
 				update_list(list, slice_2_string(current_dir))
 			}
-		case "<Enter>":
-			write_text(list, current_dir)
+		case "t":
+			write_text(list, &current_dir)
 		}
 
 		ui.Render(list)
@@ -201,39 +201,38 @@ func main() {
 	}
 }
 
-func write_text(list *widgets.List, current_dir []string) {
+func write_text(list *widgets.List, current_dir *[]string) {
 	list.Title = ""
-	for {
-		events := ui.PollEvents()
-		e := <-events
-		if e.Type == ui.KeyboardEvent {
-			switch e.ID {
-			case "<Escape>":
-				list.Title = slice_2_string(current_dir)
-				return
-			case "<Backspace>":
-				if len(list.Title) > 0 {
-					list.Title = list.Title[:(len(list.Title) - 1)]
-					ui.Render(list)
-				}
-			case "<Enter>":
-				dir, temp_dir := is_dir(current_dir, list)
-				if dir {
-
-					current_dir = temp_dir
-					update_list(list, slice_2_string(current_dir))
-				}
-				return
-			default:
-				list.Title = list.Title + e.ID
-
+	ui.Render(list)
+	for e := range ui.PollEvents() {
+		switch e.ID {
+		case "<Escape>":
+			list.Title = slice_2_string(*current_dir)
+			return
+		case "<Backspace>", "<C-<Backspace>>":
+			if len(list.Title) > 0 {
+				list.Title = list.Title[:(len(list.Title) - 1)]
+				ui.Render(list)
 			}
-			files, _ := ioutil.ReadDir(slice_2_string(current_dir))
-			list.Rows = filter(list.Title, files)
-			list.ScrollTop()
-			ui.Render(list)
+		case "<Enter>":
+			dir, temp_dir := is_dir(*current_dir, list)
+			if dir {
 
+				*current_dir = temp_dir
+				update_list(list, slice_2_string(*current_dir))
+			}
+			return
+		case "<Space>":
+			list.Title = list.Title + " "
+		default:
+			list.Title = list.Title + e.ID
+			ui.Render(list)
 		}
+		files, _ := ioutil.ReadDir(slice_2_string(*current_dir))
+		list.Rows = filter(list.Title, files)
+		list.ScrollTop()
+		ui.Render(list)
+
 	}
 
 }
